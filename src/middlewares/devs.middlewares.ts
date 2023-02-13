@@ -1,25 +1,76 @@
-import { Request, Response, NextFunction, raw } from "express";
-import { QueryConfig } from "pg";
+import { NextFunction, Request, Response } from "express";
+import { QueryResult } from "pg";
 import { client } from "../database";
-import { iDeveloper } from "../interfaces/developers.interfaces";
-const ensureDevDataIsValid = async (
+
+const ensureRequestIsNotEmpty = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<Response | void> => {
-  const validKeys = ["name", "email"];
-  const bodyKeys = Object.keys(req.body);
-  const dataKeysValidation: boolean = validKeys.every((key: string) => {
-    return bodyKeys.includes(key);
-  });
-  if (!dataKeysValidation) {
-    return res.status(400).json({
-      message: `Please insert all the required keys: ${validKeys}`,
+  const keys = Object.keys(req.body);
+  keys.length > 0
+    ? next()
+    : res.status(400).json({
+        message: `Request must contain information!`,
+      });
+};
+const verifyIfDevIdExists = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<Response | void> => {
+  let id = req.params.id;
+  if (req.body.developerId) {
+    id = req.body.developerId;
+  }
+  let QueryString: string = `
+  SELECT * 
+  FROM 
+  developers 
+  WHERE 
+  id = $1
+ `;
+  const QueryConfig = {
+    text: QueryString,
+    values: [id],
+  };
+  const queryResult: QueryResult = await client.query(QueryConfig);
+  if (queryResult.rows.length === 0) {
+    return res.status(404).json({
+      message: `Developer not found!`,
     });
   }
-  const { name, email } = req.body;
-  const newBody = { name, email };
+  return next();
+};
+const verifyDevInfoIsAvailable = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<Response | void> => {
+  const id = req.params.id;
+  let QueryString: string = `
+  SELECT * 
+  FROM 
+  developers 
+  WHERE 
+  id = $1
+ `;
+  const QueryConfig = {
+    text: QueryString,
+    values: [id],
+  };
+  const queryResult: QueryResult = await client.query(QueryConfig);
+
+  if (queryResult.rows.length === 0) {
+    return res.status(404).json({
+      message: `Developer not found!`,
+    });
+  }
   return next();
 };
 
-export { ensureDevDataIsValid };
+export {
+  ensureRequestIsNotEmpty,
+  verifyDevInfoIsAvailable,
+  verifyIfDevIdExists,
+};

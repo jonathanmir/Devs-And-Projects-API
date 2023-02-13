@@ -32,3 +32,5 @@ interface iProjectTechnologiesResult {
 interface iProjTech extends iProjectTechnologiesResult {
   id: number;
 }
+
+export { iProject, ProjectResult };
